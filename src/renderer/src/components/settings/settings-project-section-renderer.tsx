@@ -50,6 +50,7 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
             project={project}
             selectedProjectSetupId={model.settingsProjectSetupSelection[settingsProject.projectId]}
             settingsEntryRepoIds={new Set(settingsProject.setups.map((setup) => setup.repoId))}
+            isCheckoutEntry={settingsProject.checkoutLabel !== undefined}
             isLocalWindowsProject={
               getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID &&
               terminal.isWindowsTerminalHost

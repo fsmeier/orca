@@ -123,7 +123,8 @@ export function RepositoryHostSetupsSection({
         (setup) => setup.projectId === selectedProjectHostSetup.projectId
       )
     : []
-  // Why: a sibling entry's setups can't be opened from this pane.
+  // Why: a sibling entry's setups can't be opened from this pane; not-set-up
+  // placeholders belong to the project, not a checkout, so every entry keeps them.
   const projectHostSetups = setupsByOwnedExecutionHost(
     allProjectHostSetups.filter(
       (setup) =>

@@ -8,7 +8,8 @@ import {
 import { projectHostSetupProjectionFromRepos } from '../../../../shared/project-host-setup-projection'
 import {
   buildProjectGroupingIndex,
-  isCheckoutScopedProjectSetup
+  isCheckoutScopedProjectSetup,
+  type ProjectGroupingModel
 } from '@/components/sidebar/worktree-list/grouping/project-grouping'
 
 export type SettingsProject = {
@@ -46,17 +47,20 @@ export function getSettingsProjectRepresentativeRepoId(
 }
 
 /**
- * Collapses repo rows into one entry per project so Settings renders per
- * project, matching the rest of the app. Derived from repos alone (not the
- * persisted projects/setups) so the nav and pane lists agree exactly.
+ * Collapses repo rows into one entry per project, except that a same-host clone
+ * the sidebar gives its own header gets its own entry. Entries are derived from
+ * repos alone so the nav and pane lists agree exactly; pass the sidebar's
+ * `projectGrouping` so the split decision sees the same setups it does.
  */
-export function buildSettingsProjectList(repos: readonly Repo[]): SettingsProject[] {
+export function buildSettingsProjectList(
+  repos: readonly Repo[],
+  projectGrouping?: ProjectGroupingModel
+): SettingsProject[] {
   const projection = projectHostSetupProjectionFromRepos(repos)
   const projectById = new Map(projection.projects.map((project) => [project.id, project]))
-  const groupingIndex = buildProjectGroupingIndex({
-    projects: projection.projects,
-    projectHostSetups: projection.setups
-  })
+  const groupingIndex = buildProjectGroupingIndex(
+    projectGrouping ?? { projects: projection.projects, projectHostSetups: projection.setups }
+  )
   // Why: Settings metadata is rebuilt as repos refresh across hosts; index
   // setups once so many projects do not turn each refresh into an O(n²) scan.
   const entriesByKey = new Map<string, Omit<SettingsProject, 'representativeRepoId'>>()
@@ -186,9 +190,10 @@ export function resolveSettingsTargetRepoId(
 }
 
 /**
- * Removes a project's setup on every host it exists on. Sequential so each
- * host's teardown + projection recompute don't interleave; setups without a
- * repo row (planned/not-set-up hosts) have nothing to remove.
+ * Removes a Settings entry's setup on every host it exists on; a split clone
+ * entry holds only that clone. Sequential so each host's teardown + projection
+ * recompute don't interleave; setups without a repo row (planned/not-set-up
+ * hosts) have nothing to remove.
  */
 export async function removeSettingsProjectFromAllHosts(
   setups: readonly ProjectHostSetup[],

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
+import { projectHostSetupProjectionFromRepos } from '../../../../shared/project-host-setup-projection'
 import {
   buildRepoIdToHostSelection,
   buildRepoIdToRepresentative,
@@ -89,6 +90,22 @@ describe('buildSettingsProjectList', () => {
     expect(projects.map((entry) => entry.representativeRepoId)).toEqual(['clone-a', 'clone-b'])
     expect(projects.map((entry) => entry.checkoutLabel)).toEqual(['app', 'app-b'])
     expect(buildRepoIdToRepresentative(projects).get('clone-b')).toBe('clone-b')
+  })
+
+  it('splits by the setups the sidebar groups with, not only the loaded repos', () => {
+    const cloneA = makeRepo({ id: 'clone-a', displayName: 'app', gitRemoteIdentity: gitRemote })
+    const cloneB = makeRepo({ id: 'clone-b', displayName: 'app-b', gitRemoteIdentity: gitRemote })
+    const sidebarProjection = projectHostSetupProjectionFromRepos([cloneA, cloneB])
+
+    const projects = buildSettingsProjectList([cloneA], {
+      projects: sidebarProjection.projects,
+      projectHostSetups: sidebarProjection.setups
+    })
+
+    expect(projects.map((entry) => entry.checkoutLabel)).toEqual(['app'])
+    expect(buildSettingsProjectList([cloneA]).map((entry) => entry.checkoutLabel)).toEqual([
+      undefined
+    ])
   })
 
   it('keeps other hosts in a project-level entry when same-host clones split', () => {
