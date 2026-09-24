@@ -19,6 +19,20 @@ export type SettingsProject = {
   representativeRepoId: string
   /** Only set when same-host clones split the project. */
   checkoutLabel?: string
+  /** Set on every entry of a split project; each holds only its own part. */
+  splitProject?: boolean
+}
+
+/** What a pane's "Remove Project" removes: the project, one clone, or a split project's remainder. */
+export type SettingsProjectRemovalScope = 'project' | 'checkout' | 'split-project'
+
+export function getSettingsProjectRemovalScope(
+  settingsProject: SettingsProject
+): SettingsProjectRemovalScope {
+  if (settingsProject.checkoutLabel !== undefined) {
+    return 'checkout'
+  }
+  return settingsProject.splitProject ? 'split-project' : 'project'
 }
 
 /**
@@ -84,9 +98,17 @@ export function buildSettingsProjectList(
       })
     }
   }
+  const entryCountByProjectId = new Map<string, number>()
+  for (const entry of entriesByKey.values()) {
+    entryCountByProjectId.set(
+      entry.projectId,
+      (entryCountByProjectId.get(entry.projectId) ?? 0) + 1
+    )
+  }
   return [...entriesByKey.values()].map((entry) => ({
     ...entry,
-    representativeRepoId: getSettingsProjectRepresentativeRepoId(entry.setups)
+    representativeRepoId: getSettingsProjectRepresentativeRepoId(entry.setups),
+    ...((entryCountByProjectId.get(entry.projectId) ?? 0) > 1 ? { splitProject: true } : {})
   }))
 }
 
@@ -190,10 +212,10 @@ export function resolveSettingsTargetRepoId(
 }
 
 /**
- * Removes a Settings entry's setup on every host it exists on; a split clone
- * entry holds only that clone. Sequential so each host's teardown + projection
- * recompute don't interleave; setups without a repo row (planned/not-set-up
- * hosts) have nothing to remove.
+ * Removes a Settings entry's setup on every host it exists on; an entry of a
+ * split project holds only its own part. Sequential so each host's teardown +
+ * projection recompute don't interleave; setups without a repo row
+ * (planned/not-set-up hosts) have nothing to remove.
  */
 export async function removeSettingsProjectFromAllHosts(
   setups: readonly ProjectHostSetup[],

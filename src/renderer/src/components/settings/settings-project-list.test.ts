@@ -7,6 +7,7 @@ import {
   buildRepoIdToRepresentative,
   buildSettingsProjectList,
   getSettingsProjectHostRepo,
+  getSettingsProjectRemovalScope,
   getSettingsProjectRepresentativeRepoId,
   getSettingsTargetHostSelection,
   removeSettingsProjectFromAllHosts,
@@ -64,6 +65,7 @@ describe('buildSettingsProjectList', () => {
     expect(projects[0].setups).toHaveLength(2)
     // Representative is the local host's repo.
     expect(projects[0].representativeRepoId).toBe('local-1')
+    expect(getSettingsProjectRemovalScope(projects[0])).toBe('project')
   })
 
   it('collapses a folder with the same id on local + runtime into one project', () => {
@@ -123,6 +125,11 @@ describe('buildSettingsProjectList', () => {
       ['remote-9']
     ])
     expect(projects[2].checkoutLabel).toBeUndefined()
+    expect(projects.map(getSettingsProjectRemovalScope)).toEqual([
+      'checkout',
+      'checkout',
+      'split-project'
+    ])
   })
 
   it('keeps the representative stable when an unrelated host is removed', () => {

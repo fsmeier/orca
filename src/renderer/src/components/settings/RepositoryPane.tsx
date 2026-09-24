@@ -15,6 +15,7 @@ import { SparsePresetSettingsSection } from './SparsePresetSettingsSection'
 import { RepositorySourceControlAiSection } from './RepositorySourceControlAiSection'
 import { SearchableSetting } from './SearchableSetting'
 import { RepositoryRemoveProjectButton } from './RepositoryRemoveProjectButton'
+import type { SettingsProjectRemovalScope } from './settings-project-list'
 import { matchesSettingsSearch } from './settings-search'
 import { useAppStore } from '../../store'
 import { getRepositoryIconSectionId } from './repository-settings-targets'
@@ -59,7 +60,7 @@ type RepositoryPaneProps = {
   project?: Project | null
   selectedProjectSetupId?: string
   settingsEntryRepoIds?: ReadonlySet<string>
-  isCheckoutEntry?: boolean
+  removalScope?: SettingsProjectRemovalScope
   isLocalWindowsProject?: boolean
   wslAvailable?: boolean
   wslDistros?: string[]
@@ -81,7 +82,7 @@ export function RepositoryPane({
   project = null,
   selectedProjectSetupId,
   settingsEntryRepoIds,
-  isCheckoutEntry = false,
+  removalScope = 'project',
   isLocalWindowsProject = false,
   wslAvailable = false,
   wslDistros = EMPTY_WSL_DISTROS,
@@ -251,7 +252,7 @@ export function RepositoryPane({
           </div>
           <RepositoryRemoveProjectButton
             repo={repo}
-            isCheckoutEntry={isCheckoutEntry}
+            removalScope={removalScope}
             forceVisible={forceFullPaneForRepoMatch}
             removeProject={removeProject}
           />

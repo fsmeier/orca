@@ -78,7 +78,7 @@ export function useSettingsStoreModel() {
     () => buildRepoIdToHostSelection(settingsProjectList),
     [settingsProjectList]
   )
-  // Why: removes the entry on every host, not just the selected one; a split clone entry holds only that clone, like the sidebar header's remove.
+  // Why: removes the entry on every host, not just the selected one; an entry of a split project holds only its own part (clones keep their own entries).
   const removeProjectAllHosts = useCallback(
     (setups: readonly ProjectHostSetup[]): Promise<void> =>
       removeSettingsProjectFromAllHosts(setups, removeProject),
