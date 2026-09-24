@@ -78,6 +78,36 @@ describe('buildSettingsProjectList', () => {
     expect(projects[0].representativeRepoId).toBe('folder-x')
   })
 
+  it('gives each same-host clone of one remote its own entry, like the sidebar (#20861)', () => {
+    const repos: Repo[] = [
+      makeRepo({ id: 'clone-a', displayName: 'app', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-b', displayName: 'app-b', gitRemoteIdentity: gitRemote })
+    ]
+
+    const projects = buildSettingsProjectList(repos)
+
+    expect(projects.map((entry) => entry.representativeRepoId)).toEqual(['clone-a', 'clone-b'])
+    expect(projects.map((entry) => entry.checkoutLabel)).toEqual(['app', 'app-b'])
+    expect(buildRepoIdToRepresentative(projects).get('clone-b')).toBe('clone-b')
+  })
+
+  it('keeps other hosts in a project-level entry when same-host clones split', () => {
+    const repos: Repo[] = [
+      makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-b', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'remote-9', gitRemoteIdentity: gitRemote, executionHostId: 'ssh:box' })
+    ]
+
+    const projects = buildSettingsProjectList(repos)
+
+    expect(projects.map((entry) => entry.setups.map((setup) => setup.repoId))).toEqual([
+      ['clone-a'],
+      ['clone-b'],
+      ['remote-9']
+    ])
+    expect(projects[2].checkoutLabel).toBeUndefined()
+  })
+
   it('keeps the representative stable when an unrelated host is removed', () => {
     const withRuntime: Repo[] = [
       makeRepo({ id: 'local-1', gitRemoteIdentity: gitRemote }),
@@ -239,12 +269,14 @@ describe('deep-link resolution', () => {
       id: 'direct-repo',
       gitRemoteIdentity: gitRemote,
       executionHostId: 'runtime:home-mac',
+      connectionId: 'direct-box',
       path: '/direct/repo'
     })
     const jumpRepo = makeRepo({
       id: 'jump-repo',
       gitRemoteIdentity: gitRemote,
       executionHostId: 'runtime:home-mac',
+      connectionId: 'jump-box',
       path: '/jump/repo'
     })
     const sameHubProjects = buildSettingsProjectList([directRepo, jumpRepo])

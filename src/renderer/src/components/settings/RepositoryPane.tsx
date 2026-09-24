@@ -60,6 +60,7 @@ type RepositoryPaneProps = {
   removeProject: (repoId: string) => void
   project?: Project | null
   selectedProjectSetupId?: string
+  settingsEntryRepoIds?: ReadonlySet<string>
   isLocalWindowsProject?: boolean
   wslAvailable?: boolean
   wslDistros?: string[]
@@ -80,6 +81,7 @@ export function RepositoryPane({
   removeProject,
   project = null,
   selectedProjectSetupId,
+  settingsEntryRepoIds,
   isLocalWindowsProject = false,
   wslAvailable = false,
   wslDistros = EMPTY_WSL_DISTROS,
@@ -343,6 +345,7 @@ export function RepositoryPane({
             <RepositoryHostSetupsSection
               repo={repo}
               selectedProjectSetupId={selectedProjectSetupId}
+              settingsEntryRepoIds={settingsEntryRepoIds}
               forceVisible={forceFullPaneForRepoMatch}
               searchQuery={searchQuery}
               searchEntries={hostSetupEntries}

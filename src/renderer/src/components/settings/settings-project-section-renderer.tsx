@@ -31,7 +31,7 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
         title={translate(
           'auto.components.settings.Settings.3bf149e873',
           'Project Settings > {{value0}}',
-          { value0: project.displayName }
+          { value0: settingsProject.checkoutLabel ?? project.displayName }
         )}
         description={repo.path}
         searchEntries={navigation.getSectionSearchEntries(repoSectionId)}
@@ -49,6 +49,7 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
             removeProject={() => void model.removeProjectAllHosts(settingsProject.setups)}
             project={project}
             selectedProjectSetupId={model.settingsProjectSetupSelection[settingsProject.projectId]}
+            settingsEntryRepoIds={new Set(settingsProject.setups.map((setup) => setup.repoId))}
             isLocalWindowsProject={
               getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID &&
               terminal.isWindowsTerminalHost

@@ -6,12 +6,18 @@ import {
   type ExecutionHostId
 } from '../../../../shared/execution-host'
 import { projectHostSetupProjectionFromRepos } from '../../../../shared/project-host-setup-projection'
+import {
+  buildProjectGroupingIndex,
+  isCheckoutScopedProjectSetup
+} from '@/components/sidebar/worktree-list/grouping/project-grouping'
 
 export type SettingsProject = {
   projectId: string
   project: Project
   setups: ProjectHostSetup[]
   representativeRepoId: string
+  /** Only set when same-host clones split the project. */
+  checkoutLabel?: string
 }
 
 /**
@@ -46,26 +52,38 @@ export function getSettingsProjectRepresentativeRepoId(
  */
 export function buildSettingsProjectList(repos: readonly Repo[]): SettingsProject[] {
   const projection = projectHostSetupProjectionFromRepos(repos)
-  const setupsByProjectId = new Map<string, ProjectHostSetup[]>()
+  const projectById = new Map(projection.projects.map((project) => [project.id, project]))
+  const groupingIndex = buildProjectGroupingIndex({
+    projects: projection.projects,
+    projectHostSetups: projection.setups
+  })
+  // Why: Settings metadata is rebuilt as repos refresh across hosts; index
+  // setups once so many projects do not turn each refresh into an O(n²) scan.
+  const entriesByKey = new Map<string, Omit<SettingsProject, 'representativeRepoId'>>()
   for (const setup of projection.setups) {
-    const projectSetups = setupsByProjectId.get(setup.projectId)
-    if (projectSetups) {
-      projectSetups.push(setup)
+    const project = projectById.get(setup.projectId)
+    if (!project) {
+      continue
+    }
+    const checkoutScoped =
+      groupingIndex !== null && isCheckoutScopedProjectSetup(setup, groupingIndex)
+    const key = checkoutScoped ? `${project.id}::setup:${setup.repoId}` : project.id
+    const entry = entriesByKey.get(key)
+    if (entry) {
+      entry.setups.push(setup)
     } else {
-      setupsByProjectId.set(setup.projectId, [setup])
+      entriesByKey.set(key, {
+        projectId: project.id,
+        project,
+        setups: [setup],
+        ...(checkoutScoped ? { checkoutLabel: setup.displayName } : {})
+      })
     }
   }
-  return projection.projects.map((project) => {
-    // Why: Settings metadata is rebuilt as repos refresh across hosts; index
-    // setups once so many projects do not turn each refresh into an O(n²) scan.
-    const setups = setupsByProjectId.get(project.id) ?? []
-    return {
-      projectId: project.id,
-      project,
-      setups,
-      representativeRepoId: getSettingsProjectRepresentativeRepoId(setups)
-    }
-  })
+  return [...entriesByKey.values()].map((entry) => ({
+    ...entry,
+    representativeRepoId: getSettingsProjectRepresentativeRepoId(entry.setups)
+  }))
 }
 
 /**
