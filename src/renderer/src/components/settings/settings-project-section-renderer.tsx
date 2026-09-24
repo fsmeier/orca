@@ -49,7 +49,11 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
             removeProject={() => void model.removeProjectAllHosts(settingsProject.setups)}
             project={project}
             selectedProjectSetupId={model.settingsProjectSetupSelection[settingsProject.projectId]}
-            settingsEntryRepoIds={new Set(settingsProject.setups.map((setup) => setup.repoId))}
+            settingsEntryRepoIds={
+              settingsProject.splitProject
+                ? new Set(settingsProject.setups.map((setup) => setup.repoId))
+                : undefined
+            }
             removalScope={getSettingsProjectRemovalScope(settingsProject)}
             isLocalWindowsProject={
               getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID &&

@@ -110,6 +110,19 @@ describe('buildSettingsProjectList', () => {
     ])
   })
 
+  it("keeps a clone's same-id twin on another host in that clone's entry", () => {
+    const repos: Repo[] = [
+      makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-b', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote, executionHostId: 'runtime:mac' })
+    ]
+
+    const projects = buildSettingsProjectList(repos)
+
+    expect(projects.map((entry) => entry.representativeRepoId)).toEqual(['clone-a', 'clone-b'])
+    expect(projects[0].setups.map((setup) => setup.hostId)).toEqual(['local', 'runtime:mac'])
+  })
+
   it('keeps other hosts in a project-level entry when same-host clones split', () => {
     const repos: Repo[] = [
       makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),

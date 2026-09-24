@@ -78,13 +78,21 @@ export function buildSettingsProjectList(
   // Why: Settings metadata is rebuilt as repos refresh across hosts; index
   // setups once so many projects do not turn each refresh into an O(n²) scan.
   const entriesByKey = new Map<string, Omit<SettingsProject, 'representativeRepoId'>>()
+  // Why: a repo id owns one `repo-<id>` section, so its same-id twin on another
+  // host joins the clone's entry instead of colliding with it.
+  const checkoutRepoIds = new Set(
+    groupingIndex === null
+      ? []
+      : projection.setups
+          .filter((setup) => isCheckoutScopedProjectSetup(setup, groupingIndex))
+          .map((setup) => setup.repoId)
+  )
   for (const setup of projection.setups) {
     const project = projectById.get(setup.projectId)
     if (!project) {
       continue
     }
-    const checkoutScoped =
-      groupingIndex !== null && isCheckoutScopedProjectSetup(setup, groupingIndex)
+    const checkoutScoped = checkoutRepoIds.has(setup.repoId)
     const key = checkoutScoped ? `${project.id}::setup:${setup.repoId}` : project.id
     const entry = entriesByKey.get(key)
     if (entry) {
