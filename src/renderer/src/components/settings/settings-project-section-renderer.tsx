@@ -14,8 +14,8 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
     const repo = getSettingsProjectHostRepo(
       settingsProject,
       model.repos,
-      model.settingsProjectHostSelection[settingsProject.projectId],
-      model.settingsProjectSetupSelection[settingsProject.projectId]
+      model.settingsProjectHostSelection[settingsProject.selectionKey],
+      model.settingsProjectSetupSelection[settingsProject.selectionKey]
     )
     if (!repo) {
       return null
@@ -48,7 +48,10 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
             updateRepo={model.updateRepo}
             removeProject={() => void model.removeProjectAllHosts(settingsProject.setups)}
             project={project}
-            selectedProjectSetupId={model.settingsProjectSetupSelection[settingsProject.projectId]}
+            selectedProjectSetupId={
+              model.settingsProjectSetupSelection[settingsProject.selectionKey]
+            }
+            settingsSelectionKey={settingsProject.selectionKey}
             settingsEntryRepoIds={
               settingsProject.splitProject
                 ? new Set(settingsProject.setups.map((setup) => setup.repoId))

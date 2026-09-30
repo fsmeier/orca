@@ -87,8 +87,8 @@ export function useSettingsTerminalModel(
       const repo = getSettingsProjectHostRepo(
         settingsProject,
         model.repos,
-        model.settingsProjectHostSelection[settingsProject.projectId],
-        model.settingsProjectSetupSelection[settingsProject.projectId]
+        model.settingsProjectHostSelection[settingsProject.selectionKey],
+        model.settingsProjectSetupSelection[settingsProject.selectionKey]
       )
       if (repo) {
         reposByHostIdentity.set(getRepoHostIdentity(repo), repo)

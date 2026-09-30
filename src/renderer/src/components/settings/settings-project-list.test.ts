@@ -123,6 +123,21 @@ describe('buildSettingsProjectList', () => {
     expect(projects[0].setups.map((setup) => setup.hostId)).toEqual(['local', 'runtime:mac'])
   })
 
+  it('gives each clone entry its own host selection key', () => {
+    const repos: Repo[] = [
+      makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-b', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'remote-9', gitRemoteIdentity: gitRemote, executionHostId: 'ssh:box' })
+    ]
+
+    const projects = buildSettingsProjectList(repos)
+    const keys = projects.map((entry) => entry.selectionKey)
+
+    expect(new Set(keys).size).toBe(3)
+    expect(projects[2].selectionKey).toBe(projects[2].projectId)
+    expect(buildRepoIdToHostSelection(projects).get('clone-b')?.selectionKey).toBe(keys[1])
+  })
+
   it('keeps other hosts in a project-level entry when same-host clones split', () => {
     const repos: Repo[] = [
       makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),
@@ -223,7 +238,7 @@ describe('deep-link resolution', () => {
   it('maps a repoId to its owning project + host for selection', () => {
     const map = buildRepoIdToHostSelection(projects)
     expect(map.get('remote-9')).toEqual({
-      projectId: projects[0].projectId,
+      selectionKey: projects[0].selectionKey,
       hostId: 'runtime:home-mac'
     })
   })
@@ -242,7 +257,7 @@ describe('deep-link resolution', () => {
 
     expect(getSettingsTargetHostSelection(sameIdProjects, 'same-repo', 'ssh:server')).toEqual(
       expect.objectContaining({
-        projectId: sameIdProjects[0].projectId,
+        selectionKey: sameIdProjects[0].selectionKey,
         hostId: 'ssh:server'
       })
     )

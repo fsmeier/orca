@@ -17,6 +17,8 @@ export type SettingsProject = {
   project: Project
   setups: ProjectHostSetup[]
   representativeRepoId: string
+  /** Keys this entry's host selection: the project id, or the clone's own key when split. */
+  selectionKey: string
   /** Only set when same-host clones split the project. */
   checkoutLabel?: string
   /** Set on every entry of a split project; each holds only its own part. */
@@ -100,6 +102,7 @@ export function buildSettingsProjectList(
     } else {
       entriesByKey.set(key, {
         projectId: project.id,
+        selectionKey: key,
         project,
         setups: [setup],
         ...(checkoutScoped ? { checkoutLabel: setup.displayName } : {})
@@ -160,16 +163,16 @@ export function buildRepoIdToRepresentative(
   return map
 }
 
-/** Maps each host's repoId to its owning project + host, so a deep link can
+/** Maps each host's repoId to its owning entry + host, so a deep link can
  *  select that host in the pane's "Available Hosts" switcher. */
 export function buildRepoIdToHostSelection(
   projects: readonly SettingsProject[]
-): Map<string, { projectId: string; hostId: ExecutionHostId }> {
-  const map = new Map<string, { projectId: string; hostId: ExecutionHostId }>()
+): Map<string, { selectionKey: string; hostId: ExecutionHostId }> {
+  const map = new Map<string, { selectionKey: string; hostId: ExecutionHostId }>()
   for (const settingsProject of projects) {
     for (const setup of settingsProject.setups) {
       if (setup.repoId.trim().length > 0 && !map.has(setup.repoId)) {
-        map.set(setup.repoId, { projectId: settingsProject.projectId, hostId: setup.hostId })
+        map.set(setup.repoId, { selectionKey: settingsProject.selectionKey, hostId: setup.hostId })
       }
     }
   }
@@ -180,13 +183,13 @@ export function getSettingsTargetHostSelection(
   projects: readonly SettingsProject[],
   repoId: string,
   hostId: ExecutionHostId
-): { projectId: string; hostId: ExecutionHostId; setupId: string } | null {
+): { selectionKey: string; hostId: ExecutionHostId; setupId: string } | null {
   for (const settingsProject of projects) {
     const setup = settingsProject.setups.find(
       (candidate) => candidate.repoId === repoId && candidate.hostId === hostId
     )
     if (setup) {
-      return { projectId: settingsProject.projectId, hostId, setupId: setup.id }
+      return { selectionKey: settingsProject.selectionKey, hostId, setupId: setup.id }
     }
   }
   return null

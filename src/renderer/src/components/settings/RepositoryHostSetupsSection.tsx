@@ -34,6 +34,7 @@ import {
 type RepositoryHostSetupsSectionProps = {
   repo: Repo
   selectedProjectSetupId?: string
+  settingsSelectionKey?: string
   settingsEntryRepoIds?: ReadonlySet<string>
   forceVisible: boolean
   searchQuery: string
@@ -61,6 +62,7 @@ function setupsByOwnedExecutionHost(
 export function RepositoryHostSetupsSection({
   repo,
   selectedProjectSetupId,
+  settingsSelectionKey,
   settingsEntryRepoIds,
   forceVisible,
   searchQuery,
@@ -143,17 +145,18 @@ export function RepositoryHostSetupsSection({
   })
   const hostOptionById = new Map(hostOptions.map((option) => [option.id, option]))
   const [deletingSetupId, setDeletingSetupId] = useState<string | null>(null)
-  const projectId = selectedProjectHostSetup?.projectId
+  // Why: split clone entries share a projectId, so each keeps its own selection.
+  const selectionKey = settingsSelectionKey ?? selectedProjectHostSetup?.projectId
   // Why: the single project pane switches host in place — set the ephemeral
-  // per-project selection instead of navigating to a separate repo section.
+  // per-entry selection instead of navigating to a separate repo section.
   const selectHost = (hostId: ExecutionHostId) => {
-    if (projectId) {
-      setSettingsProjectHostSelection(projectId, hostId)
+    if (selectionKey) {
+      setSettingsProjectHostSelection(selectionKey, hostId)
     }
   }
   const selectSetup = (setup: ProjectHostSetup) => {
-    if (projectId) {
-      setSettingsProjectHostSelection(projectId, setup.hostId, setup.id)
+    if (selectionKey) {
+      setSettingsProjectHostSelection(selectionKey, setup.hostId, setup.id)
     }
   }
   if (
