@@ -25,6 +25,35 @@ export type SettingsProject = {
   splitProject?: boolean
 }
 
+function getCheckoutSelectionKey(projectId: string, repoId: string): string {
+  return `${projectId}::setup:${repoId}`
+}
+
+/**
+ * The host (and setup) an entry's pane shows. Adding or removing a sibling
+ * clone changes an entry's selectionKey, so a pick saved under its other key
+ * carries over while that host is still in this entry.
+ */
+export function getSettingsEntryHostSelection(
+  settingsProject: SettingsProject,
+  hostSelection: Readonly<Record<string, ExecutionHostId>>,
+  setupSelection: Readonly<Record<string, string>>
+): { hostId: ExecutionHostId | undefined; setupId: string | undefined } {
+  const { projectId, selectionKey, setups } = settingsProject
+  const keys = [
+    selectionKey,
+    projectId,
+    ...setups.map((setup) => getCheckoutSelectionKey(projectId, setup.repoId))
+  ]
+  for (const key of keys) {
+    const hostId = hostSelection[key]
+    if (hostId && (key === selectionKey || setups.some((setup) => setup.hostId === hostId))) {
+      return { hostId, setupId: setupSelection[key] }
+    }
+  }
+  return { hostId: undefined, setupId: undefined }
+}
+
 /** What a pane's "Remove Project" removes: the project, one clone, or a split project's remainder. */
 export type SettingsProjectRemovalScope = 'project' | 'checkout' | 'split-project'
 
@@ -95,7 +124,7 @@ export function buildSettingsProjectList(
       continue
     }
     const checkoutScoped = checkoutRepoIds.has(setup.repoId)
-    const key = checkoutScoped ? `${project.id}::setup:${setup.repoId}` : project.id
+    const key = checkoutScoped ? getCheckoutSelectionKey(project.id, setup.repoId) : project.id
     const entry = entriesByKey.get(key)
     if (entry) {
       entry.setups.push(setup)

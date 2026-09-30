@@ -2,7 +2,11 @@ import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../../sha
 import { getRepoHostIdentity } from '../../store/slices/repo-host-identity'
 import { RepositoryPane } from './RepositoryPane'
 import { SettingsSection } from './SettingsSection'
-import { getSettingsProjectHostRepo, getSettingsProjectRemovalScope } from './settings-project-list'
+import {
+  getSettingsEntryHostSelection,
+  getSettingsProjectHostRepo,
+  getSettingsProjectRemovalScope
+} from './settings-project-list'
 import { translate } from '@/i18n/i18n'
 import type { SettingsRenderContext } from './settings-render-context'
 
@@ -11,11 +15,16 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
   return model.settingsProjectList.map((settingsProject) => {
     const repoSectionId = `repo-${settingsProject.representativeRepoId}`
     // Why: use the switcher-selected host's repo so identity/host-specific edits follow "Available Hosts".
+    const hostSelection = getSettingsEntryHostSelection(
+      settingsProject,
+      model.settingsProjectHostSelection,
+      model.settingsProjectSetupSelection
+    )
     const repo = getSettingsProjectHostRepo(
       settingsProject,
       model.repos,
-      model.settingsProjectHostSelection[settingsProject.selectionKey],
-      model.settingsProjectSetupSelection[settingsProject.selectionKey]
+      hostSelection.hostId,
+      hostSelection.setupId
     )
     if (!repo) {
       return null
@@ -48,9 +57,7 @@ export function renderProjectSettingsSections(context: SettingsRenderContext): R
             updateRepo={model.updateRepo}
             removeProject={() => void model.removeProjectAllHosts(settingsProject.setups)}
             project={project}
-            selectedProjectSetupId={
-              model.settingsProjectSetupSelection[settingsProject.selectionKey]
-            }
+            selectedProjectSetupId={hostSelection.setupId}
             settingsSelectionKey={settingsProject.selectionKey}
             settingsEntryRepoIds={
               settingsProject.splitProject

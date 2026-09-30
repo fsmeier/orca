@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
+import type { ExecutionHostId } from '../../../../shared/execution-host'
 import { projectHostSetupProjectionFromRepos } from '../../../../shared/project-host-setup-projection'
 import {
   buildRepoIdToHostSelection,
   buildRepoIdToRepresentative,
   buildSettingsProjectList,
   getSettingsProjectHostRepo,
+  getSettingsEntryHostSelection,
   getSettingsProjectRemovalScope,
   getSettingsProjectRepresentativeRepoId,
   getSettingsTargetHostSelection,
@@ -136,6 +138,35 @@ describe('buildSettingsProjectList', () => {
     expect(new Set(keys).size).toBe(3)
     expect(projects[2].selectionKey).toBe(projects[2].projectId)
     expect(buildRepoIdToHostSelection(projects).get('clone-b')?.selectionKey).toBe(keys[1])
+  })
+
+  it("keeps a clone's host pick when its sibling clone is removed", () => {
+    const cloneA = makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote })
+    const cloneATwin = makeRepo({
+      id: 'clone-a',
+      gitRemoteIdentity: gitRemote,
+      executionHostId: 'runtime:mac'
+    })
+    const cloneB = makeRepo({ id: 'clone-b', gitRemoteIdentity: gitRemote })
+    const [splitCloneA] = buildSettingsProjectList([cloneA, cloneB, cloneATwin])
+    const hostSelection: Record<string, ExecutionHostId> = {
+      [splitCloneA.selectionKey]: 'runtime:mac'
+    }
+
+    const [unsplit] = buildSettingsProjectList([cloneA, cloneATwin])
+
+    expect(unsplit.selectionKey).not.toBe(splitCloneA.selectionKey)
+    expect(getSettingsEntryHostSelection(unsplit, hostSelection, {}).hostId).toBe('runtime:mac')
+  })
+
+  it("does not take a sibling clone's host pick", () => {
+    const projects = buildSettingsProjectList([
+      makeRepo({ id: 'clone-a', gitRemoteIdentity: gitRemote }),
+      makeRepo({ id: 'clone-b', gitRemoteIdentity: gitRemote })
+    ])
+    const hostSelection: Record<string, ExecutionHostId> = { [projects[1].selectionKey]: 'local' }
+
+    expect(getSettingsEntryHostSelection(projects[0], hostSelection, {}).hostId).toBeUndefined()
   })
 
   it('keeps other hosts in a project-level entry when same-host clones split', () => {
