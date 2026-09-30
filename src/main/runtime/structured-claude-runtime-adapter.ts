@@ -10,6 +10,7 @@ import {
 } from '../claude/claude-structured-session-adapter'
 import { claudeProviderHandleLink } from '../claude/claude-structured-owner-identity'
 import type { StructuredAgentSessionLifecycleEvent } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
+import type { ClaudeStructuredSessionEvent } from '../claude/claude-structured-session-state'
 import {
   recordAgentSessionProviderHandle,
   reviseAgentSessionClaudeResumePoint
@@ -32,12 +33,44 @@ export type StructuredClaudeRuntimeAdapterDeps = {
   readClaudeManagedAccountGate?: () => ClaudeManagedAccountGateSettings | null
   openClaudeConnection?: ClaudeStructuredSessionAdapterDeps['openConnection']
   readProcessStartTime?: ClaudeStructuredSessionAdapterDeps['readProcessStartTime']
-  onUnexpectedExit: (event: StructuredAgentSessionLifecycleEvent) => void
+  modelCatalog?: ClaudeStructuredSessionAdapterDeps['modelCatalog']
+  onLifecycleEvent: (event: StructuredAgentSessionLifecycleEvent) => void
   onBackgroundTasksChanged?: (
     sessionId: string,
     state: AgentSessionBackgroundTaskState | null
   ) => void
   onDispatchSettledLate?: ClaudeStructuredSessionAdapterDeps['onDispatchSettledLate']
+  onSessionIdle?: ClaudeStructuredSessionAdapterDeps['onSessionIdle']
+  onChildWorkEvidence?: ClaudeStructuredSessionAdapterDeps['onChildWorkEvidence']
+}
+
+/** The adapter events the host's lifecycle handler consumes, in the host's vocabulary. */
+export function structuredClaudeLifecycleEvent(
+  event: ClaudeStructuredSessionEvent
+): StructuredAgentSessionLifecycleEvent | null {
+  if (event.type === 'started') {
+    return event
+  }
+  if (
+    event.type === 'ended' &&
+    event.cause === 'unexpected-exit' &&
+    event.fence !== undefined &&
+    event.acquisitionGeneration
+  ) {
+    return {
+      type: 'ended',
+      sessionId: event.sessionId,
+      reason: event.reason,
+      ...(event.failure ? { failure: event.failure } : {}),
+      cause: event.cause,
+      fence: event.fence,
+      acquisitionGeneration: event.acquisitionGeneration,
+      // The instant the translator ended the open turn at; the host reads the exit's turn by it.
+      ...(event.observedAt === undefined ? {} : { observedAt: event.observedAt }),
+      ...(event.startupUnproven ? { startupUnproven: event.startupUnproven } : {})
+    }
+  }
+  return null
 }
 
 export function createStructuredClaudeRuntimeAdapter(
@@ -91,30 +124,19 @@ export function createStructuredClaudeRuntimeAdapter(
       )
     },
     onEvent: (event) => {
-      if (
-        event.type === 'ended' &&
-        event.cause === 'unexpected-exit' &&
-        event.fence !== undefined &&
-        event.acquisitionGeneration
-      ) {
-        deps.onUnexpectedExit({
-          type: 'ended',
-          sessionId: event.sessionId,
-          reason: event.reason,
-          cause: event.cause,
-          fence: event.fence,
-          acquisitionGeneration: event.acquisitionGeneration,
-          ...(event.settlementRetryRequired
-            ? { settlementRetryRequired: event.settlementRetryRequired }
-            : {})
-        })
+      const lifecycle = structuredClaudeLifecycleEvent(event)
+      if (lifecycle) {
+        deps.onLifecycleEvent(lifecycle)
       }
     },
     ...(deps.onBackgroundTasksChanged
       ? { onBackgroundTasksChanged: deps.onBackgroundTasksChanged }
       : {}),
     ...(deps.onDispatchSettledLate ? { onDispatchSettledLate: deps.onDispatchSettledLate } : {}),
+    ...(deps.onSessionIdle ? { onSessionIdle: deps.onSessionIdle } : {}),
+    ...(deps.onChildWorkEvidence ? { onChildWorkEvidence: deps.onChildWorkEvidence } : {}),
     ...(deps.openClaudeConnection ? { openConnection: deps.openClaudeConnection } : {}),
-    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {})
+    ...(deps.readProcessStartTime ? { readProcessStartTime: deps.readProcessStartTime } : {}),
+    ...(deps.modelCatalog ? { modelCatalog: deps.modelCatalog } : {})
   })
 }
