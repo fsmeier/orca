@@ -6,6 +6,8 @@ import {
   type ExecutionHostId
 } from '../../../../shared/execution-host'
 import { projectHostSetupProjectionFromRepos } from '../../../../shared/project-host-setup-projection'
+import { getRepoHostIdentityForParts } from '../../../../shared/repo-host-identity'
+import { normalizeRuntimePathForComparison } from '../../../../shared/cross-platform-path'
 import {
   buildProjectGroupingIndex,
   isCheckoutScopedProjectSetup,
@@ -40,15 +42,20 @@ export function getSettingsEntryHostSelection(
   setupSelection: Readonly<Record<string, string>>
 ): { hostId: ExecutionHostId | undefined; setupId: string | undefined } {
   const { projectId, selectionKey, setups } = settingsProject
-  const keys = [
+  const keys = new Set([
     selectionKey,
     projectId,
     ...setups.map((setup) => getCheckoutSelectionKey(projectId, setup.repoId))
-  ]
-  for (const key of keys) {
+  ])
+  // Selection records are ordered by the store's last explicit pick, including alias keys.
+  for (const key of Object.keys(hostSelection).toReversed()) {
+    if (!keys.has(key)) {
+      continue
+    }
     const hostId = hostSelection[key]
-    if (hostId && (key === selectionKey || setups.some((setup) => setup.hostId === hostId))) {
-      return { hostId, setupId: setupSelection[key] }
+    const setupId = setupSelection[key]
+    if (setups.some((setup) => setup.hostId === hostId && (!setupId || setup.id === setupId))) {
+      return { hostId, setupId }
     }
   }
   return { hostId: undefined, setupId: undefined }
@@ -106,6 +113,9 @@ export function buildSettingsProjectList(
   const groupingIndex = buildProjectGroupingIndex(
     projectGrouping ?? { projects: projection.projects, projectHostSetups: projection.setups }
   )
+  const suppliedSetupByCheckout = new Map(
+    projectGrouping?.projectHostSetups.map((setup) => [getSettingsSetupCheckoutKey(setup), setup])
+  )
   // Why: Settings metadata is rebuilt as repos refresh across hosts; index
   // setups once so many projects do not turn each refresh into an O(n²) scan.
   const entriesByKey = new Map<string, Omit<SettingsProject, 'representativeRepoId'>>()
@@ -115,7 +125,12 @@ export function buildSettingsProjectList(
     groupingIndex === null
       ? []
       : projection.setups
-          .filter((setup) => isCheckoutScopedProjectSetup(setup, groupingIndex))
+          .filter((setup) =>
+            isCheckoutScopedProjectSetup(
+              suppliedSetupByCheckout.get(getSettingsSetupCheckoutKey(setup)) ?? setup,
+              groupingIndex
+            )
+          )
           .map((setup) => setup.repoId)
   )
   for (const setup of projection.setups) {
@@ -150,6 +165,10 @@ export function buildSettingsProjectList(
     representativeRepoId: getSettingsProjectRepresentativeRepoId(entry.setups),
     ...((entryCountByProjectId.get(entry.projectId) ?? 0) > 1 ? { splitProject: true } : {})
   }))
+}
+
+function getSettingsSetupCheckoutKey(setup: ProjectHostSetup): string {
+  return `${getRepoHostIdentityForParts(setup.repoId, setup.hostId)}\0${normalizeRuntimePathForComparison(setup.path.trim())}`
 }
 
 /**

@@ -41,15 +41,17 @@ export function createUiSettingsActions(set: UISliceSet, get: UISliceGet): Parti
         }
         if (
           s.settingsProjectHostSelection[selectionKey] === hostId &&
-          s.settingsProjectSetupSelection[selectionKey] === setupId
+          s.settingsProjectSetupSelection[selectionKey] === setupId &&
+          Object.keys(s.settingsProjectHostSelection).at(-1) === selectionKey
         ) {
           return s
         }
+        // Reinsert so equivalent project/checkout keys resolve to the latest explicit pick.
+        const nextHostSelections = { ...s.settingsProjectHostSelection }
+        delete nextHostSelections[selectionKey]
+        nextHostSelections[selectionKey] = hostId
         return {
-          settingsProjectHostSelection: {
-            ...s.settingsProjectHostSelection,
-            [selectionKey]: hostId
-          },
+          settingsProjectHostSelection: nextHostSelections,
           settingsProjectSetupSelection: nextSetupSelections
         }
       }),
